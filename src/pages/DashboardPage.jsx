@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { MES_NAV } from '../config/mesNav';
 import { GlassPanel } from '../components/ui/GlassPanel';
 
-const LIVE_ROUTE = '/workflow-management';
+const LIVE_ROUTES = ['/workflow-management', '/staff-management'];
 
 export default function DashboardPage() {
   return (
@@ -25,7 +25,7 @@ export default function DashboardPage() {
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {MES_NAV.filter((n) => n.to !== '/dashboard').map((item, i) => {
-            const live = item.to === LIVE_ROUTE;
+            const live = LIVE_ROUTES.includes(item.to);
             return (
               <motion.div
                 key={item.to}
@@ -53,9 +53,11 @@ export default function DashboardPage() {
                       {item.label}
                     </h2>
                     <p className="mt-1 text-[11px] text-white/40 leading-relaxed">
-                      {live
+                      {item.to === '/workflow-management'
                         ? '3D digital twin, floor orchestration, and workflow links.'
-                        : 'Reserved module — full experience shipping in a future release.'}
+                        : item.to === '/staff-management'
+                          ? 'Workforce orchestration, attendance, payroll, and utilization intelligence.'
+                          : 'Reserved module — full experience shipping in a future release.'}
                     </p>
                   </GlassPanel>
                 </Link>
