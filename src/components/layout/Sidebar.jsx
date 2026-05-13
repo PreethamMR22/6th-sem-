@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Search, Plus, ChevronLeft, ChevronRight, Filter } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { MACHINE_TYPES } from '../../data/machineTypes';
 import { GlassPanel } from '../ui/GlassPanel';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export const Sidebar = () => {
   const [searchTerm, setSearchTerm] = useState('');

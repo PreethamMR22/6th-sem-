@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { InspectionPanel } from './components/layout/InspectionPanel';
@@ -13,27 +13,28 @@ function App() {
   
   const addMachine = useStore((state) => state.addMachine);
   const machines = useStore((state) => state.machines);
-  const addConnection = useStore((state) => state.addConnection);
 
   // Add initial machines for a better first impression
   useEffect(() => {
-    if (machines.length === 0) {
-      addMachine(MACHINE_TYPES.LOCKSTITCH, [-4, 0, 0]);
-      addMachine(MACHINE_TYPES.OVERLOCK, [0, 0, 0]);
-      addMachine(MACHINE_TYPES.QUALITY_CHECK, [4, 0, 0]);
-      
-      // We need IDs to connect, so we'll let the user do it or wait for store to update
-      // For now, let's just leave it empty and let user play
-    }
-  }, []);
+    const st = useStore.getState();
+    if (st.machines.length > 0) return;
+    addMachine(MACHINE_TYPES.CUTTING, [-6, 0, 0]);
+    addMachine(MACHINE_TYPES.LOCKSTITCH, [-2, 0, -1]);
+    addMachine(MACHINE_TYPES.OVERLOCK, [2, 0, 1]);
+    addMachine(MACHINE_TYPES.QUALITY_CHECK, [6, 0, 0]);
+  }, [addMachine]);
 
-  // Try to connect them once they are added
   useEffect(() => {
-    if (machines.length >= 3 && useStore.getState().connections.length === 0) {
-      const ids = machines.map(m => m.id);
-      addConnection(ids[0], ids[1]);
-      addConnection(ids[1], ids[2]);
-    }
+    const st = useStore.getState();
+    if (st.connections.length > 0 || st.machines.length < 4) return;
+    const byType = (t) => st.machines.find((m) => m.type === t);
+    const cut = byType('cutting');
+    const ls = byType('lockstitch');
+    const ol = byType('overlock');
+    const qc = byType('quality_check');
+    if (cut && ls) st.addConnection(cut.id, ls.id);
+    if (ls && ol) st.addConnection(ls.id, ol.id);
+    if (ol && qc) st.addConnection(ol.id, qc.id);
   }, [machines]);
 
   return (

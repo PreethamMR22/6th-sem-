@@ -1,6 +1,4 @@
-import React, { useRef } from 'react';
-import { useTexture, MeshReflectorMaterial, Grid } from '@react-three/drei';
-import * as THREE from 'three';
+import { MeshReflectorMaterial, Grid } from '@react-three/drei';
 
 export const Floor = () => {
   return (

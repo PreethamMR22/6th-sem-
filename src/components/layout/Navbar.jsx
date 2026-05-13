@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Activity, Bell, Clock, Cpu, LayoutDashboard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Bell, Clock, Cpu, LayoutDashboard } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 
 export const Navbar = () => {

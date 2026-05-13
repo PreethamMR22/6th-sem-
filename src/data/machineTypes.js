@@ -1,15 +1,23 @@
-import { 
-  Scissors, 
-  Cpu, 
-  Settings, 
-  Layers, 
-  Wind, 
-  Thermometer, 
-  CheckCircle, 
-  Package 
+import {
+  Scissors,
+  Cpu,
+  Settings,
+  Layers,
+  Wind,
+  Thermometer,
+  CheckCircle,
+  Package,
+  Slice,
 } from 'lucide-react';
 
 export const MACHINE_TYPES = {
+  CUTTING: {
+    id: 'cutting',
+    name: 'Cutting Station',
+    icon: Slice,
+    tag: 'CUT',
+    color: '#22d3ee',
+  },
   LOCKSTITCH: {
     id: 'lockstitch',
     name: 'Lockstitch Machine',

@@ -1,15 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  X, 
-  Activity, 
-  Terminal, 
-  BarChart3, 
-  Link2, 
+import { useState, useEffect, useRef } from 'react';
+import {
+  X,
+  Activity,
+  Terminal,
+  BarChart3,
+  Link2,
   AlertTriangle,
   Info,
   TrendingUp,
   History,
-  Zap
+  Zap,
+  Plus,
+  CheckCircle,
+  Trash2,
+  ArrowRight,
 } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { MACHINE_TYPES } from '../../data/machineTypes';
@@ -18,17 +22,23 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export const InspectionPanel = () => {
   const selectedMachineId = useStore((state) => state.selectedMachineId);
+  const selectedConnectionId = useStore((state) => state.selectedConnectionId);
+  const connections = useStore((state) => state.connections);
   const machines = useStore((state) => state.machines);
   const isDetailsOpen = useStore((state) => state.isDetailsOpen);
   const setDetailsOpen = useStore((state) => state.setDetailsOpen);
   const selectMachine = useStore((state) => state.selectMachine);
   const removeMachine = useStore((state) => state.removeMachine);
-  
+  const removeConnection = useStore((state) => state.removeConnection);
+  const rerouteConnection = useStore((state) => state.rerouteConnection);
+
   const [activeTab, setActiveTab] = useState('overview');
+  const [rerouteTarget, setRerouteTarget] = useState('');
   const logEndRef = useRef(null);
 
-  const machine = machines.find(m => m.id === selectedMachineId);
-  const machineType = machine ? Object.values(MACHINE_TYPES).find(t => t.id === machine.type) : null;
+  const machine = machines.find((m) => m.id === selectedMachineId);
+  const machineType = machine ? Object.values(MACHINE_TYPES).find((t) => t.id === machine.type) : null;
+  const connection = connections.find((c) => c.id === selectedConnectionId);
 
   useEffect(() => {
     if (logEndRef.current) {
@@ -36,7 +46,139 @@ export const InspectionPanel = () => {
     }
   }, [machine?.logs]);
 
-  if (!isDetailsOpen || !machine) return null;
+  if (!isDetailsOpen) return null;
+
+  if (connection) {
+    const src = machines.find((m) => m.id === connection.source);
+    const tgt = machines.find((m) => m.id === connection.target);
+    const srcType = src ? Object.values(MACHINE_TYPES).find((t) => t.id === src.type) : null;
+    const tgtType = tgt ? Object.values(MACHINE_TYPES).find((t) => t.id === tgt.type) : null;
+    const flow =
+      src && tgt
+        ? Math.round(
+            ((src.telemetry?.throughput ?? 0) + (tgt.telemetry?.throughput ?? 0)) / 2
+          )
+        : 0;
+    const candidates = machines.filter((m) => m.id !== connection.source);
+
+    return (
+      <div className="fixed top-20 right-6 bottom-6 w-96 z-40">
+        <GlassPanel className="h-full border border-white/10 shadow-2xl flex flex-col">
+          <div className="p-5 border-b border-white/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-secondary/10 blur-3xl -mr-16 -mt-16 rounded-full" />
+            <div className="flex items-start justify-between relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-brand-primary/30">
+                  <Link2 className="w-6 h-6 text-brand-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white leading-tight">Workflow link</h2>
+                  <p className="text-[10px] font-mono text-white/40 mt-0.5">ID {connection.id.slice(0, 8)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailsOpen(false)}
+                className="p-1 hover:bg-white/10 rounded-lg text-white/30 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5 custom-scrollbar space-y-5">
+            <div className="p-4 rounded-xl border border-white/10 bg-white/5 space-y-3">
+              <p className="text-[10px] text-white/40 uppercase font-bold tracking-widest">Garment / data flow</p>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 p-2 rounded-lg bg-black/40 border border-white/10">
+                  <p className="text-[9px] text-white/40 uppercase">Source</p>
+                  <p className="text-xs font-bold text-white">{src?.name ?? '—'}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {srcType && <srcType.icon className="w-3.5 h-3.5 text-brand-primary" />}
+                    <span className="text-[9px] text-white/50 font-mono">{src?.status}</span>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-brand-primary shrink-0" />
+                <div className="flex-1 p-2 rounded-lg bg-black/40 border border-white/10">
+                  <p className="text-[9px] text-white/40 uppercase">Target</p>
+                  <p className="text-xs font-bold text-white">{tgt?.name ?? '—'}</p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    {tgtType && <tgtType.icon className="w-3.5 h-3.5 text-brand-secondary" />}
+                    <span className="text-[9px] text-white/50 font-mono">{tgt?.status}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between text-[10px] text-white/50">
+                <span>Blended throughput index</span>
+                <span className="font-mono text-brand-primary">{flow}</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] text-white/40 uppercase font-bold">Reroute target</p>
+              <div className="flex gap-2">
+                <select
+                  value={rerouteTarget}
+                  onChange={(e) => setRerouteTarget(e.target.value)}
+                  className="flex-1 bg-black/50 border border-white/10 rounded-lg px-2 py-2 text-xs text-white"
+                >
+                  <option value="">Select machine…</option>
+                  {candidates.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  disabled={!rerouteTarget}
+                  onClick={() => {
+                    if (!rerouteTarget) return;
+                    rerouteConnection(connection.id, rerouteTarget);
+                    setRerouteTarget('');
+                  }}
+                  className="px-3 py-2 rounded-lg bg-brand-primary/20 border border-brand-primary/40 text-[10px] font-bold text-brand-primary disabled:opacity-30"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => src && selectMachine(src.id)}
+                className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-white/80 hover:border-brand-primary/40"
+              >
+                Focus source
+              </button>
+              <button
+                type="button"
+                onClick={() => tgt && selectMachine(tgt.id)}
+                className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-[10px] font-bold text-white/80 hover:border-brand-primary/40"
+              >
+                Focus target
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => removeConnection(connection.id)}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-status-error/10 hover:bg-status-error/20 border border-status-error/25 text-status-error text-xs font-bold transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+              Disconnect pipeline
+            </button>
+          </div>
+        </GlassPanel>
+      </div>
+    );
+  }
+
+  if (!machine) return null;
+
+  const incoming = connections.filter((c) => c.target === machine.id);
+  const outgoing = connections.filter((c) => c.source === machine.id);
 
   const tabs = [
     { id: 'overview', icon: Activity, label: 'Overview' },
@@ -257,63 +399,99 @@ export const InspectionPanel = () => {
                 animate={{ opacity: 1 }}
                 className="space-y-4"
               >
-                <div className="p-4 bg-white/5 rounded-xl border border-white/5">
-                  <h4 className="text-[10px] text-white/40 uppercase font-bold mb-3">Workflow Chain</h4>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-black/40 border border-white/5">
-                      <div className="w-8 h-8 rounded-md bg-white/5 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-white/20" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] text-white/40 uppercase font-bold">Input Stream</p>
-                        <p className="text-xs text-white/80">UPSTREAM_FEED_A</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <motion.div 
-                        animate={{ y: [0, 5, 0] }} 
-                        transition={{ repeat: Infinity, duration: 2 }}
-                      >
-                        <Activity className="w-4 h-4 text-brand-primary rotate-180" />
-                      </motion.div>
-                    </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-brand-primary/10 border border-brand-primary/20">
-                      <div className="w-8 h-8 rounded-md bg-brand-primary/20 flex items-center justify-center">
-                        {machineType && <machineType.icon className="w-4 h-4 text-brand-primary" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] text-brand-primary/40 uppercase font-bold">Current Node</p>
-                        <p className="text-xs text-white font-bold">{machine.name}</p>
-                      </div>
-                    </div>
-                    <div className="flex justify-center">
-                      <motion.div 
-                        animate={{ y: [0, 5, 0] }} 
-                        transition={{ repeat: Infinity, duration: 2 }}
-                      >
-                        <Activity className="w-4 h-4 text-brand-primary" />
-                      </motion.div>
-                    </div>
-                    <div className="flex items-center gap-3 p-2 rounded-lg bg-black/40 border border-white/5 opacity-50">
-                      <div className="w-8 h-8 rounded-md bg-white/5 flex items-center justify-center">
-                        <Plus className="w-4 h-4 text-white/20" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[10px] text-white/40 uppercase font-bold">Output Sink</p>
-                        <p className="text-xs text-white/80 italic">Select Downstream Node...</p>
-                      </div>
-                    </div>
+                <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3">
+                  <h4 className="text-[10px] text-white/40 uppercase font-bold">Incoming workflow</h4>
+                  {incoming.length === 0 ? (
+                    <p className="text-xs text-white/35 italic">No upstream links (no INPUT feeds).</p>
+                  ) : (
+                    incoming.map((c) => {
+                      const up = machines.find((m) => m.id === c.source);
+                      const upT = up ? Object.values(MACHINE_TYPES).find((t) => t.id === up.type) : null;
+                      return (
+                        <button
+                          type="button"
+                          key={c.id}
+                          onClick={() => up && selectMachine(up.id)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg bg-black/40 border border-white/10 hover:border-brand-primary/40 text-left transition-colors"
+                        >
+                          {upT && (
+                            <div className="w-8 h-8 rounded-md bg-white/5 flex items-center justify-center">
+                              <upT.icon className="w-4 h-4 text-brand-primary" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-white/40 uppercase font-bold">From</p>
+                            <p className="text-xs text-white truncate">{up?.name}</p>
+                          </div>
+                          <Link2 className="w-4 h-4 text-white/25 shrink-0" />
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="p-4 bg-white/5 rounded-xl border border-white/5 space-y-3">
+                  <h4 className="text-[10px] text-white/40 uppercase font-bold">Outgoing workflow</h4>
+                  {outgoing.length === 0 ? (
+                    <p className="text-xs text-white/35 italic">Wire OUTPUT (cyan) → downstream INPUT (violet).</p>
+                  ) : (
+                    outgoing.map((c) => {
+                      const down = machines.find((m) => m.id === c.target);
+                      const downT = down ? Object.values(MACHINE_TYPES).find((t) => t.id === down.type) : null;
+                      return (
+                        <button
+                          type="button"
+                          key={c.id}
+                          onClick={() => down && selectMachine(down.id)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg bg-black/40 border border-white/10 hover:border-brand-primary/40 text-left transition-colors"
+                        >
+                          {downT && (
+                            <div className="w-8 h-8 rounded-md bg-white/5 flex items-center justify-center">
+                              <downT.icon className="w-4 h-4 text-brand-secondary" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] text-white/40 uppercase font-bold">To</p>
+                            <p className="text-xs text-white truncate">{down?.name}</p>
+                          </div>
+                          <Link2 className="w-4 h-4 text-white/25 shrink-0" />
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="p-4 bg-brand-primary/5 rounded-xl border border-brand-primary/15 space-y-2">
+                  <h4 className="text-[10px] text-brand-primary/80 uppercase font-bold">Queue & throughput</h4>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/50">Queue depth</span>
+                    <span className="font-mono text-white">{machine.telemetry.queue}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-white/50">Throughput index</span>
+                    <span className="font-mono text-brand-primary">{machine.telemetry.throughput ?? '—'}</span>
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                   <h4 className="text-[10px] text-white/40 uppercase font-bold px-1">Nearby Candidates</h4>
-                   {machines.filter(m => m.id !== machine.id).slice(0, 2).map((other) => (
-                     <div key={other.id} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 hover:border-brand-primary/30 transition-colors group cursor-pointer">
-                        <span className="text-xs text-white/60">{other.name}</span>
-                        <Link2 className="w-3.5 h-3.5 text-white/20 group-hover:text-brand-primary" />
-                     </div>
-                   ))}
+                  <h4 className="text-[10px] text-white/40 uppercase font-bold px-1">Quick link suggestion</h4>
+                  {machines
+                    .filter((m) => m.id !== machine.id && !outgoing.some((o) => o.target === m.id))
+                    .slice(0, 4)
+                    .map((other) => (
+                      <button
+                        type="button"
+                        key={other.id}
+                        onClick={() => {
+                          const { addConnection: ac } = useStore.getState();
+                          ac(machine.id, other.id);
+                        }}
+                        className="w-full flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 hover:border-brand-primary/35 transition-colors group text-left"
+                      >
+                        <span className="text-xs text-white/70">{other.name}</span>
+                        <Plus className="w-3.5 h-3.5 text-white/25 group-hover:text-brand-primary shrink-0" />
+                      </button>
+                    ))}
                 </div>
               </motion.div>
             )}
